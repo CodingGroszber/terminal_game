@@ -1,5 +1,21 @@
+<<<<<<< Updated upstream
+=======
+mod color;
+mod game;
+
+use crate::{color::PaletteColor, game::Game};
+use crossterm::{
+    cursor::{Hide, MoveTo, Show},
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind}, // Import KeyEventKind
+    execute,
+    queue,
+    style::Print,
+    terminal::{
+        self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+    },
+};
+>>>>>>> Stashed changes
 use std::{
-    collections::HashMap,
     io::{Write, stdout},
     thread,
     time::{Duration, Instant},
@@ -288,6 +304,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     execute!(stdout, EnterAlternateScreen, Hide)?;
 
+<<<<<<< Updated upstream
     // Create color mapping
     let mut palette = HashMap::new();
     palette.insert('0', PaletteColor::Black);
@@ -312,10 +329,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Animation::new(vec![player_idle, player_run1, player_run2], 5),
     );
 
+=======
+    // Create game state with fixed size
+    let mut game = Game::new(40, 20);
+
+>>>>>>> Stashed changes
     // Game loop timing
     let target_fps = 60;
     let frame_duration = Duration::from_secs_f32(1.0 / target_fps as f32);
     let mut last_update = Instant::now();
+<<<<<<< Updated upstream
     let mut accumulator = Duration::ZERO;
 
     // =====================
@@ -361,8 +384,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         // MUTABLE operations first
-        game.clear();
+=======
 
+    // Main game loop
+    'gameloop: loop {
+        // Handle input
+        while event::poll(Duration::ZERO)? {
+            match event::read()? {
+                Event::Key(KeyEvent {
+                    code,
+                    kind: KeyEventKind::Press,
+                    ..
+                }) => match code {
+                    KeyCode::Char('q') | KeyCode::Esc => break 'gameloop,
+                    KeyCode::Left => game.player_x = game.player_x.saturating_sub(1),
+                    KeyCode::Right => game.player_x = (game.player_x + 1).min(game.width - 1),
+                    KeyCode::Up => game.player_y = game.player_y.saturating_sub(1),
+                    KeyCode::Down => game.player_y = (game.player_y + 1).min(game.height - 1),
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+
+        // Update game state
+>>>>>>> Stashed changes
+        game.clear();
+        game.set_pixel(game.player_x, game.player_y, PaletteColor::Red);
+
+<<<<<<< Updated upstream
         // Draw environment
         for x in 0..game.width {
             game.pixels[game.height - 1][x] = PaletteColor::DarkGreen;
@@ -382,6 +432,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Frame rate maintenance
         thread::sleep(frame_duration.saturating_sub(last_update.elapsed()));
+=======
+        // Render game
+        let rendered = game.render();
+        for (_, y, line) in rendered.into_iter() {
+            queue!(stdout, MoveTo(0, y), Print(line))?;
+        }
+        stdout.flush()?;
+
+        // Frame timing
+        let frame_time = last_update.elapsed();
+        if frame_time < frame_duration {
+            thread::sleep(frame_duration - frame_time);
+        }
+        last_update = Instant::now();
+>>>>>>> Stashed changes
     }
 
     // Cleanup
