@@ -33,34 +33,84 @@ impl Game {
         }
     }
 
-    pub fn render(&self) -> Vec<(u16, u16, String)> {
-        let mut output = Vec::with_capacity(self.height + 2);
-
-        let border_escape = self.border_color.to_ansi_escape();
-
-        // Top border
-        let top_border = format!("{}{}{}{}\x1b[0m", border_escape, '╔', "═".repeat(self.width), '╗');
-        output.push((0, 0, top_border));
-
-        // Game area with side borders
-        for (y, row) in self.pixels.iter().enumerate() {
-            let mut line = String::new();
-            line.push_str(&format!("{}{}\x1b[0m", border_escape, '║')); // Left border, then reset
-            for pixel in row {
-                if *pixel == PaletteColor::Transparent {
-                    line.push(' ');
-                } else {
-                    let pixel_escape = pixel.to_ansi_escape();
-                    line.push_str(&format!("{}{}\x1b[0m", pixel_escape, '█'));
+    fn get_braille_char_and_color(&self, bx: usize, by: usize) -> (char, Option<PaletteColor>) {
+        let x = bx * 2;
+        let y = by * 4;
+        let mut n = 0u8;
+        let mut color = None;
+        for dy in 0..4 {
+            for dx in 0..2 {
+                let px = x + dx;
+                let py = y + dy;
+                if px < self.width
+                    && py < self.height
+                    && self.pixels[py][px] != PaletteColor::Transparent
+                {
+                    let bit = match (dx, dy) {
+                        (0, 0) => 0,
+                        (0, 1) => 1,
+                        (0, 2) => 2,
+                        (0, 3) => 6,
+                        (1, 0) => 3,
+                        (1, 1) => 4,
+                        (1, 2) => 5,
+                        (1, 3) => 7,
+                        _ => unreachable!(),
+                    };
+                    n |= 1 << bit;
+                    if color.is_none() {
+                        color = Some(self.pixels[py][px]);
+                    }
                 }
             }
-            line.push_str(&format!("{}{}\x1b[0m", border_escape, '║')); // Right border, then reset
-            output.push((0, (y + 1) as u16, line));
+        }
+        if n == 0 {
+            (' ', None)
+        } else {
+            let braille_char = char::from_u32(0x2800 + n as u32).unwrap();
+            (braille_char, color)
+        }
+    }
+
+    pub fn render(&self) -> Vec<(u16, u16, String)> {
+        let braille_width = self.width / 2;
+        let braille_height = self.height / 4;
+        let mut output = Vec::with_capacity(braille_height + 2);
+        let border_escape = self.border_color.to_ansi_escape();
+
+        let top_border = format!(
+            "{}{}{}{}\x1b[0m",
+            border_escape,
+            '╔',
+            "═".repeat(braille_width),
+            '╗'
+        );
+        output.push((0, 0, top_border));
+
+        for by in 0..braille_height {
+            let mut line = String::new();
+            line.push_str(&format!("{}{}\x1b[0m", border_escape, '║'));
+            for bx in 0..braille_width {
+                let (ch, color_opt) = self.get_braille_char_and_color(bx, by);
+                if let Some(color) = color_opt {
+                    let color_escape = color.to_ansi_escape();
+                    line.push_str(&format!("{}{}\x1b[0m", color_escape, ch));
+                } else {
+                    line.push(' ');
+                }
+            }
+            line.push_str(&format!("{}{}\x1b[0m", border_escape, '║'));
+            output.push((0, (by + 1) as u16, line));
         }
 
-        // Bottom border
-        let bottom_border = format!("{}{}{}{}\x1b[0m", border_escape, '╚', "═".repeat(self.width), '╝');
-        output.push((0, (self.height + 1) as u16, bottom_border));
+        let bottom_border = format!(
+            "{}{}{}{}\x1b[0m",
+            border_escape,
+            '╚',
+            "═".repeat(braille_width),
+            '╝'
+        );
+        output.push((0, (braille_height + 1) as u16, bottom_border));
 
         output
     }

@@ -24,8 +24,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     execute!(stdout, EnterAlternateScreen, Hide)?;
 
-    // Create game state with fixed size
-    let mut game = Game::new(40, 20);
+    let (terminal_width, terminal_height) = terminal::size()?; // Get terminal size in characters
+    let braille_width = (terminal_width - 2) as usize; // Account for borders
+    let braille_height = (terminal_height - 2) as usize;
+    let pixel_width = braille_width * 2; // Ensure even width
+    let pixel_height = braille_height * 4; // Ensure multiple of 4
+    let mut game = Game::new(pixel_width, pixel_height);
+
+    // let pixel_width = 20 * 2;  // 40 pixels wide
+    // let pixel_height = 5 * 4;  // 20 pixels tall
+    // let mut game = Game::new(pixel_width, pixel_height);
 
     // Game loop timing
     let target_fps = 60;
