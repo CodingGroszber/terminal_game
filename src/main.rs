@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Update game state
         game.clear();
-        game.set_pixel(game.player_x, game.player_y, PaletteColor::Red);
+        game.set_pixel(game.player_x, game.player_y, game.player_color);
 
         // Render game
         let rendered = game.render();
